@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>电子图书馆首页</title>
+  <script src="auth-guard.js"></script>
+  <style>
+    body {
+      font-family: "Arial", sans-serif;
+      margin: 40px auto;
+      max-width: 1000px;
+      background-color: #f9f9f9;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    #navbar {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    #navbar button {
+      margin: 0 5px;
+      padding: 8px 14px;
+      font-weight: bold;
+    }
+    input {
+      width: 300px;
+      padding: 6px;
+      margin-right: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 12px;
+      text-align: center;
+    }
+    th {
+      background-color: #eee;
+    }
+    button.action-btn {
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>📚 欢迎来到电子图书馆</h1>
+
+<!-- 顶部导航栏 -->
+<div id="navbar">
+  <button onclick="location.href='index.html'">🏠 首页</button>
+  <button onclick="location.href='mybooks.html'" id="mybooksBtn" style="display:none">📖 我的借书</button>
+  <button onclick="location.href='admin.html'" id="adminBtn" style="display:none">🛠 管理图书</button>
+  <button onclick="logout()">🔓 登出</button>
+</div>
+
+<script>
+  const isAdmin = localStorage.getItem("admin") === "true";
+  const student_id = localStorage.getItem("student_id");
+
+  if (student_id) document.getElementById("mybooksBtn").style.display = "inline";
+  if (isAdmin) document.getElementById("adminBtn").style.display = "inline";
+
+  function logout() {
+    localStorage.clear();
+    alert("已退出登录");
+    location.href = "login.html";
+  }
+</script>
+
+<!-- 搜索框 -->
+<div style="text-align: center;">
+  <input id="search" placeholder="🔍 输入书名关键词搜索">
+  <button onclick="loadBooks()">搜索</button>
+</div>
+
+<!-- 图书表格 -->
+<table id="bookTable">
+  <thead>
+    <tr>
+      <th>书名</th>
+      <th>作者</th>
+      <th>分类</th>
+      <th>状态</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+async function loadBooks() {
+  const keyword = document.getElementById("search").value.trim();
+  const res = await fetch("/api/books");
+  const books = await res.json();
+  const tbody = document.querySelector("#bookTable tbody");
+  tbody.innerHTML = "";
+
+  books
+    .filter(book => book.title.includes(keyword))
+    .forEach(book => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${book.title}</td>
+        <td>${book.author}</td>
+        <td>${book.category}</td>
+        <td>${book.available ? '✅ 可借' : '❌ 已借出'}</td>
+        <td>
+          ${book.available
+            ? `<button class="action-btn" onclick="borrowBook('${book.isbn}')">借书</button>`
+            : `<button class="action-btn" onclick="returnBook('${book.isbn}')">还书</button>`}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+}
+
+async function borrowBook(isbn) {
+  const student_id = localStorage.getItem("student_id");
+  const isAdmin = localStorage.getItem("admin") === "true";
+
+  if (isAdmin) return alert("管理员不允许借书！");
+  if (!student_id) return alert("请先登录！");
+
+  const res = await fetch("/api/borrow", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ isbn, student_id })
+  });
+  const result = await res.json();
+  alert(result.message);
+  loadBooks();
+}
+
+async function returnBook(isbn) {
+  const student_id = localStorage.getItem("student_id");
+  const isAdmin = localStorage.getItem("admin") === "true";
+
+  if (isAdmin) return alert("管理员不允许还书！");
+  if (!student_id) return alert("请先登录！");
+
+  const res = await fetch("/api/return", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ isbn, student_id })
+  });
+  const result = await res.json();
+  alert(result.message);
+  loadBooks();
+}
+
+loadBooks();
+</script>
+
+</body>
+</html>

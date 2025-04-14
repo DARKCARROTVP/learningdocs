@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>管理员图书管理</title>
+  <script src="auth-guard.js"></script>
+  <style>
+    body {
+      font-family: "Arial", sans-serif;
+      margin: 40px auto;
+      max-width: 1000px;
+      background-color: #f9f9f9;
+      padding: 20px;
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+    #navbar {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    #navbar button {
+      margin: 0 5px;
+      padding: 8px 14px;
+      font-weight: bold;
+    }
+    input {
+      padding: 6px;
+      margin: 5px;
+      width: 250px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 12px;
+      text-align: center;
+    }
+    th {
+      background-color: #eee;
+    }
+    button.action-btn {
+      padding: 5px 10px;
+    }
+    #uploadForm {
+      display: none;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 顶部导航栏 -->
+<div id="navbar">
+  <button onclick="location.href='index.html'">🏠 首页</button>
+  <button onclick="location.href='mybooks.html'" id="mybooksBtn" style="display:none">📖 我的借书</button>
+  <button onclick="location.href='admin.html'" id="adminBtn" style="display:none">🛠 管理图书</button>
+  <div style="text-align: center; margin-bottom: 10px;">
+    <button onclick="exportCSV()">📥 导出借阅数据 CSV</button>
+  </div>  
+  <button onclick="logout()">🔓 登出</button>
+</div>
+
+<script>
+  const isAdmin = localStorage.getItem("admin") === "true";
+  const student_id = localStorage.getItem("student_id");
+
+  if (student_id) document.getElementById("mybooksBtn").style.display = "inline";
+  if (isAdmin) document.getElementById("adminBtn").style.display = "inline";
+
+  function logout() {
+    localStorage.clear();
+    alert("已退出登录");
+    location.href = "login.html";
+  }
+  function exportCSV() {
+    window.open('/api/export');
+  }  
+</script>
+
+<h2>📚 图书管理</h2>
+
+<!-- 控制区：新增按钮 + 搜索栏 -->
+<div style="text-align: center;">
+  <button onclick="toggleForm()">➕ 新增图书</button>
+  <input id="search" placeholder="🔍 搜索书名" oninput="loadBooks()">
+</div>
+
+<!-- 上传图书表单 -->
+<div id="uploadForm">
+  <h3>📥 填写图书信息</h3>
+  <input id="title" placeholder="书名">
+  <input id="author" placeholder="作者">
+  <input id="isbn" placeholder="ISBN">
+  <input id="category" placeholder="分类">
+  <button onclick="uploadBook()">提交上传</button>
+</div>
+
+<!-- 图书列表表格 -->
+<table id="bookTable">
+  <thead>
+    <tr>
+      <th>书名</th>
+      <th>作者</th>
+      <th>分类</th>
+      <th>ISBN</th>
+      <th>是否可借</th>
+      <th>借出人学号</th>
+      <th>借出人姓名</th> 
+      <th>借阅次数</th>
+      <th>操作</th>
+    </tr>
+  </thead>  
+  <tbody></tbody>
+</table>
+
+<script>
+let allBooks = [];
+
+function toggleForm() {
+  const form = document.getElementById("uploadForm");
+  form.style.display = form.style.display === "none" ? "block" : "none";
+}
+
+async function uploadBook() {
+  const title = document.getElementById("title").value;
+  const author = document.getElementById("author").value;
+  const isbn = document.getElementById("isbn").value;
+  const category = document.getElementById("category").value;
+
+  const res = await fetch("/api/books", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, author, isbn, category })
+  });
+  const result = await res.json();
+  alert(result.message);
+  document.getElementById("uploadForm").style.display = "none";
+  loadBooks();
+}
+
+async function deleteBook(isbn) {
+  if (!confirm("确定删除该图书？")) return;
+  const res = await fetch("/api/books/" + isbn, { method: "DELETE" });
+  const result = await res.json();
+  alert(result.message);
+  loadBooks();
+}
+
+async function updateField(isbn, field, value) {
+  await fetch("/api/books/" + isbn, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ field, value })
+  });
+}
+
+async function loadBooks() {
+  const keyword = document.getElementById("search").value.trim();
+  const res = await fetch("/api/books");
+  allBooks = await res.json();
+  const tbody = document.querySelector("#bookTable tbody");
+  tbody.innerHTML = "";
+  allBooks
+    .filter(book => book.title.includes(keyword))
+    .forEach(book => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><input value="${book.title}" onchange="updateField('${book.isbn}', 'title', this.value)"></td>
+        <td><input value="${book.author}" onchange="updateField('${book.isbn}', 'author', this.value)"></td>
+        <td><input value="${book.category}" onchange="updateField('${book.isbn}', 'category', this.value)"></td>
+        <td>${book.isbn}</td>
+        <td>${book.available ? '✅' : '❌'}</td>
+        <td>${book.borrowed_by || '-'}</td>
+        <td>${book.borrower_name || '-'}</td> <!-- ✅ 显示姓名 -->
+        <td>${book.borrow_count || 0}</td>     <!-- ✅ 显示次数 -->
+        <td><button class="action-btn" onclick="deleteBook('${book.isbn}')">删除</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+}
+
+loadBooks();
+function exportCSV() {
+  window.open('/api/export');
+}
+
+</script>
+
+</body>
+</html>

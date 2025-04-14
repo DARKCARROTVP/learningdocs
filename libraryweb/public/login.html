@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>登录</title>
+  <script src="auth.js"></script>
+  <style>
+    body {
+      font-family: "Arial", sans-serif;
+      margin: 40px auto;
+      max-width: 600px;
+      background-color: #f9f9f9;
+      padding: 20px;
+      text-align: center;
+    }
+    h2 {
+      color: #333;
+    }
+    input {
+      width: 300px;
+      padding: 8px;
+      margin: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🔐 登录</h2>
+<div>
+  <input id="student_id" placeholder="学号 / 管理员账号"><br>
+  <input id="email" placeholder="邮箱（读者） / 密码（管理员）"><br>
+  <button onclick="login()">登录</button>
+</div>
+
+<p style="margin-top: 20px;">
+  还没有账号？<a href="register.html">注册</a>
+</p>
+
+</body>
+</html>
