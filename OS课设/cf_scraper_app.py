@@ -1,18 +1,19 @@
 import os
 import time
 import random
+import json
 import pandas as pd
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-from tqdm import tqdm
 
 def fetch_and_extract_page(page_num: int):
     html_path = f"cf_page_{page_num}.html"
     start_rank = (page_num - 1) * 200 + 1
     all_data = []
 
+    thread_start_time = time.time()
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -26,8 +27,8 @@ def fetch_and_extract_page(page_num: int):
             url = f"https://codeforces.com/ratings/page/{page_num}"
             print(f"🌍 正在访问第 {page_num} 页: {url}")
 
-            page.goto(url, timeout=20000)
-            page.wait_for_selector("div.datatable.ratingsDatatable", timeout=10000)
+            page.goto(url, timeout=30000)
+            page.wait_for_selector("div.datatable.ratingsDatatable", timeout=15000)
             time.sleep(random.uniform(1.5, 3.5))
             html = page.content()
             with open(html_path, "w", encoding="utf-8") as f:
@@ -40,7 +41,7 @@ def fetch_and_extract_page(page_num: int):
         wrapper = soup.find("div", class_="datatable ratingsDatatable")
         if not wrapper:
             print(f"❌ 第 {page_num} 页未找到表格")
-            return []
+            return [], {}
 
         table = wrapper.find("table")
         rows = table.find_all("tr")[1:]
@@ -56,36 +57,74 @@ def fetch_and_extract_page(page_num: int):
                 })
 
         os.remove(html_path)
-        print(f"✅ 第 {page_num} 页处理完成")
-        return all_data
+        thread_end_time = time.time()
+        duration = thread_end_time - thread_start_time
+        print(f"✅ 第 {page_num} 页处理完成，用时 {duration:.2f} 秒")
+
+        timing = {
+            "page": page_num,
+            "duration": round(duration, 2),
+            "start": round(thread_start_time, 2),
+            "end": round(thread_end_time, 2)
+        }
+
+        return all_data, timing
 
     except Exception as e:
         print(f"❌ 第 {page_num} 页处理失败: {e}")
-        return []
+        return [], {}
 
-def scrape_codeforces_concurrent(from_page=1, to_page=10, max_threads=5, status_callback=None):
+def scrape_codeforces_concurrent(start_page=1, end_page=10, max_threads=5, progress_callback=None):
     all_results = []
-    total_pages = to_page - from_page + 1
+    thread_timings = []
+    total_pages = end_page - start_page + 1
     finished_pages = 0
+
+    task_start_time = time.time()
 
     with ThreadPoolExecutor(max_workers=max_threads) as executor:
         futures = {
             executor.submit(fetch_and_extract_page, page): page
-            for page in range(from_page, to_page + 1)
+            for page in range(start_page, end_page + 1)
         }
         for future in as_completed(futures):
-            result = future.result()
+            result, timing = future.result()
             if result:
                 all_results.extend(result)
+            if timing:
+                thread_timings.append(timing)
             finished_pages += 1
-            if status_callback:
-                status_callback(finished_pages, total_pages)
-            time.sleep(random.uniform(0.5, 1.5))
+            if progress_callback:
+                progress_callback(finished_pages, total_pages)
+            time.sleep(random.uniform(0.5, 1.0))
 
     df = pd.DataFrame(all_results)
+    if df.empty:
+        print("⚠️ 警告：没有抓取到任何数据")
+        return None
+
     df = df.sort_values(by="Rank").reset_index(drop=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"cf_ratings_{from_page}-{to_page}_{timestamp}.csv"
-    df.to_csv(filename, index=False, encoding="utf-8-sig")
-    print(f"\n🎉 共抓取 {len(df)} 条数据，已保存为 {filename}")
+
+    output_dir = "experiment_result_data"
+    os.makedirs(output_dir, exist_ok=True)
+
+    filename = f"cf_ratings_{start_page}-{end_page}_{timestamp}.csv"
+    full_path = os.path.join(output_dir, filename)
+    df.to_csv(full_path, index=False, encoding="utf-8-sig")
+
+    task_end_time = time.time()
+    task_duration = task_end_time - task_start_time
+    print(f"\n🎉 共抓取 {len(df)} 条数据，保存为 {full_path}")
+    print(f"📊 总任务耗时：{task_duration:.2f} 秒")
+
+    timing_file = os.path.join(output_dir, f"{filename.replace('.csv', '')}_timing.json")
+    with open(timing_file, "w") as f:
+        json.dump({
+            "total_time": round(task_duration, 2),
+            "task_start": round(task_start_time, 2),
+            "task_end": round(task_end_time, 2),
+            "pages": sorted(thread_timings, key=lambda x: x["page"])
+        }, f, indent=2)
+    print(f"📁 已保存线程耗时 JSON：{timing_file}")
     return filename

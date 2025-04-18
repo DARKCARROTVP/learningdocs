@@ -1,129 +1,266 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <title>Codeforces 并发爬虫控制台</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-    <style>
-        #table-wrapper {
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 1rem;
-            background: #f9f9f9;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Codeforces 并发爬虫系统</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="p-4">
-    <div class="container-fluid">
-        <div class="row">
-            <!-- 左侧参数设置 -->
-            <div class="col-md-4">
-                <h4>Codeforces爬虫参数设置</h4>
-                <form id="scraper-form">
-                    <div class="form-group">
-                        <label>起始页:</label>
-                        <input type="number" name="from_page" class="form-control" value="1" min="1">
-                    </div>
-                    <div class="form-group">
-                        <label>结束页:</label>
-                        <input type="number" name="to_page" class="form-control" value="10" min="1">
-                    </div>
-                    <div class="form-group">
-                        <label>线程数:</label>
-                        <input type="number" name="threads" class="form-control" value="5" min="1" max="20">
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block">开始爬取</button>
-                </form>
+  <h2 class="mb-4">Codeforces 并发爬虫系统</h2>
 
-                <div id="output" class="alert alert-info mt-3" style="display:none;"></div>
-            </div>
-
-            <!-- 右侧结果展示 -->
-            <div class="col-md-8">
-                <h4>爬取结果</h4>
-                <div id="table-wrapper"></div>
-            </div>
+  <div class="row">
+    <div class="col-md-5">
+      <form id="task-form" class="row g-3">
+        <div class="col-12">
+          <label for="start" class="form-label">起始页</label>
+          <input type="number" class="form-control" id="start" name="start" value="1">
         </div>
+        <div class="col-12">
+          <label for="end" class="form-label">结束页</label>
+          <input type="number" class="form-control" id="end" name="end" value="5">
+        </div>
+        <div class="col-12">
+          <label for="threads" class="form-label">线程数</label>
+          <input type="number" class="form-control" id="threads" name="threads" value="5">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary mt-2">开始爬取</button>
+        </div>
+      </form>
+
+      <div class="mt-4">
+        <h5>任务进度</h5>
+        <div class="progress" style="height: 25px;">
+          <div id="progress-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%;">0%</div>
+        </div>
+        <p class="mt-2" id="progress-text">当前进度：0 / 0</p>
+      </div>
     </div>
 
-    <script>
-        let pollingTimer = null;
-        let currentTaskId = null;
+    <div class="col-md-7">
+      <h5>爬取结果</h5>
+      <div id="result-table" class="border rounded p-2" style="max-height: 300px; overflow-y: scroll;">
+        <p class="text-muted">等待任务完成后展示数据…</p>
+      </div>
+      <h5 class="mt-4">线程可视化</h5>
+      <div class="mt-3 d-flex gap-2 flex-wrap">
+        <button class="btn btn-secondary" onclick="showRawData()">展示爬取数据</button>
+        <button class="btn btn-success" onclick="showThreadInfo()">线程信息</button>
+        <button class="btn btn-success" onclick="showTimingChart()">各线程运行时间趋势可视化</button>
+        <button class="btn btn-success" onclick="showStartEndChart()">线程开始与结束时间</button>
+      </div>
+      <canvas id="chart-canvas" height="360" class="mt-3"></canvas>
+    </div>
+  </div>
 
-        document.getElementById("scraper-form").addEventListener("submit", function (e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const output = document.getElementById("output");
-            const tableWrapper = document.getElementById("table-wrapper");
+<script>
+let latestFile = null;
+let latestTiming = null;
+let chartRef = null;
+let dataRendered = false;
+let progressInterval = null;
+let currentTaskId = null;
 
-            output.style.display = "block";
-            output.className = "alert alert-info";
-            output.innerText = "⏳ 已提交任务，后台正在执行...";
-            tableWrapper.innerHTML = "";
+function resetUI() {
+  dataRendered = false;
+  latestFile = null;
+  latestTiming = null;
+  currentTaskId = Math.random().toString(36).substring(2);
+  if (chartRef) {
+    chartRef.destroy();
+    chartRef = null;
+  }
+  document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('progress-bar').textContent = '0%';
+  document.getElementById('progress-text').textContent = '当前进度：0 / 0';
+  document.getElementById('result-table').innerHTML = "<p class='text-muted'>等待任务完成后展示数据…</p>";
+}
 
-            fetch("/start", {
-                method: "POST",
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                currentTaskId = data.task_id;
+document.getElementById('task-form').addEventListener('submit', function(event) {
+  event.preventDefault();
+  resetUI();
+  if (progressInterval) clearInterval(progressInterval);
+  const formData = new FormData(this);
+  progressInterval = setInterval(() => checkProgress(currentTaskId), 2000);
+  fetch('/start', {
+    method: 'POST',
+    body: formData
+  }).then(res => res.json()).then(data => {
+    if (data.filename) latestFile = data.filename; // 明确绑定
+    alert(data.message);
+  });
+});
 
-                pollingTimer = setInterval(() => {
-                    fetch("/task_status?task_id=" + currentTaskId)
-                        .then(res => res.json())
-                        .then(status => {
-                            if (status.status === "done") {
-                                clearInterval(pollingTimer);
-                                output.className = "alert alert-success";
-                                output.innerText = `✅ 任务完成，正在加载...`;
+function checkProgress(taskId) {
+  fetch('/progress')
+    .then(res => res.json())
+    .then(data => {
+      if (taskId !== currentTaskId) return;
+      const { current, total, filename } = data;
+      const percent = total === 0 ? 0 : Math.round((current / total) * 100);
+      document.getElementById('progress-bar').style.width = percent + '%';
+      document.getElementById('progress-bar').textContent = percent + '%';
+      document.getElementById('progress-text').textContent = `当前进度：${current} / ${total}`;
 
-                                fetch(`/read_csv?filename=${encodeURIComponent(status.filename)}`)
-                                    .then(res => res.json())
-                                    .then(rows => renderTable(rows));
-                            } else if (status.status === "error") {
-                                clearInterval(pollingTimer);
-                                output.className = "alert alert-danger";
-                                output.innerText = "❌ 任务失败：" + status.error;
-                            } else {
-                                output.innerText = `⏳ ${status.status} | 已完成 ${status.progress.done} / ${status.progress.total} 页`;
-                            }
-                        });
-                }, 3000);
-            });
-        });
+      if (current === total && total > 0 && filename && !dataRendered) {
+        latestFile = filename;
+        dataRendered = true;
+        fetchAndRenderCSV(filename);
+        fetch(`/timing/${filename}`)
+          .then(res => res.json())
+          .then(json => {
+            if (taskId !== currentTaskId) return;
+            latestTiming = json;
+            showTimingChart();
+          });
+        clearInterval(progressInterval);
+      }
+    });
+}
 
-        function renderTable(rows) {
-            const tableWrapper = document.getElementById("table-wrapper");
-            const table = document.createElement("table");
-            table.className = "table table-bordered table-sm";
+function fetchAndRenderCSV(filename) {
+  fetch(`/data/${filename}`)
+    .then(res => res.text())
+    .then(csv => {
+      const rows = csv.trim().split("\n").map(row => row.split(","));
+      let html = "<table class='table table-sm table-bordered'><thead><tr>";
+      rows[0].forEach(col => html += `<th>${col}</th>`);
+      html += "</tr></thead><tbody>";
+      for (let i = 1; i < rows.length; i++) {
+        html += "<tr>";
+        rows[i].forEach(col => html += `<td>${col}</td>`);
+        html += "</tr>";
+      }
+      html += "</tbody></table>";
+      document.getElementById("result-table").innerHTML = html;
+    });
+}
 
-            const thead = document.createElement("thead");
-            const headerRow = document.createElement("tr");
-            Object.keys(rows[0]).forEach(key => {
-                const th = document.createElement("th");
-                th.innerText = key;
-                headerRow.appendChild(th);
-            });
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
+function showRawData() {
+  if (!latestFile) return;
+  fetchAndRenderCSV(latestFile);
+}
 
-            const tbody = document.createElement("tbody");
-            rows.forEach(row => {
-                const tr = document.createElement("tr");
-                Object.values(row).forEach(val => {
-                    const td = document.createElement("td");
-                    td.innerText = val;
-                    tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-            });
-            table.appendChild(tbody);
+function showThreadInfo() {
+  if (!latestTiming) return;
+  const rows = latestTiming.pages.map(p =>
+    `<tr><td>${p.page}</td><td>${p.duration}s</td><td>${p.start}</td><td>${p.end}</td></tr>`
+  ).join('');
+  document.getElementById("result-table").innerHTML = `
+    <table class='table table-bordered'>
+      <thead><tr><th>页</th><th>耗时</th><th>开始时间</th><th>结束时间</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
 
-            tableWrapper.innerHTML = "";
-            tableWrapper.appendChild(table);
+function showTimingChart() {
+  if (!latestTiming) return;
+  const labels = latestTiming.pages.map(p => `第${p.page}页`);
+  const data = latestTiming.pages.map(p => p.duration);
+  renderChart(labels, data, '每页爬取耗时（秒）');
+}
+
+function showStartEndChart() {
+  if (!latestTiming) return;
+  const base = latestTiming.task_start;
+  const pages = latestTiming.pages.sort((a, b) => a.page - b.page);
+  const labels = pages.map(p => `T${p.page}`);
+  const offsets = pages.map(p => +(p.start - base).toFixed(2));
+  const durations = pages.map(p => +(p.duration).toFixed(2));
+
+  if (chartRef) chartRef.destroy();
+  chartRef = new Chart(document.getElementById('chart-canvas'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: '起始偏移',
+          data: offsets,
+          backgroundColor: 'rgba(0,0,0,0)',
+          stack: 'thread'
+        },
+        {
+          label: '执行时间',
+          data: durations,
+          backgroundColor: 'rgba(54, 162, 235, 0.6)',
+          stack: 'thread'
         }
-    </script>
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: '线程开始与结束时间（相对秒）'
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              if (ctx.dataset.label === '执行时间') {
+                const offset = offsets[ctx.dataIndex];
+                const duration = durations[ctx.dataIndex];
+                return `Start: ${offset}s, End: ${(offset + duration).toFixed(2)}s`;
+              }
+              return null;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          title: {
+            display: true,
+            text: 'Relative Time (s)'
+          }
+        },
+        y: {
+          stacked: true,
+          title: {
+            display: true,
+            text: 'Thread ID'
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderChart(labels, data1, label1, data2 = null, label2 = null) {
+  if (chartRef) chartRef.destroy();
+  const datasets = [{
+    label: label1,
+    data: data1,
+    backgroundColor: 'rgba(75, 192, 192, 0.6)'
+  }];
+  if (data2 && label2) {
+    datasets.push({
+      label: label2,
+      data: data2,
+      backgroundColor: 'rgba(255, 99, 132, 0.6)'
+    });
+  }
+  chartRef = new Chart(document.getElementById('chart-canvas'), {
+    type: 'bar',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: label1.includes('开始') ? '线程编号' : '页码' }
+        },
+        x: {
+          title: { display: true, text: label1.includes('开始') ? '时间（秒）' : '秒' }
+        }
+      }
+    }
+  });
+}
+</script>
 </body>
 </html>

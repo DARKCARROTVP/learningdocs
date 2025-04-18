@@ -1,81 +1,65 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify, render_template, send_from_directory
 import threading
-import time
-import uuid
-import pandas as pd
-import sys
+from cf_scraper_app import scrape_codeforces_concurrent
 import os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
-import cf_scraper_app
+import json
 
 app = Flask(__name__)
 
-# ✅ 多任务池
-task_pool = {}
+progress_lock = threading.Lock()
+progress = {
+    "current": 0,
+    "total": 0,
+    "filename": ""
+}
 
-def background_scrape(task_id, from_page, to_page, threads):
-    task_pool[task_id]["status"] = "running"
-    task_pool[task_id]["progress"] = {"done": 0, "total": to_page - from_page + 1}
-    task_pool[task_id]["filename"] = None
-    task_pool[task_id]["error"] = None
+def update_progress_callback(current, total):
+    with progress_lock:
+        progress["current"] = current
+        progress["total"] = total
 
-    def progress_callback(done, total):
-        task_pool[task_id]["progress"] = {"done": done, "total": total}
-
-    try:
-        filename = cf_scraper_app.scrape_codeforces_concurrent(
-            from_page=from_page,
-            to_page=to_page,
-            max_threads=threads,
-            status_callback=progress_callback
-        )
-        task_pool[task_id]["status"] = "done"
-        task_pool[task_id]["filename"] = filename
-    except Exception as e:
-        task_pool[task_id]["status"] = "error"
-        task_pool[task_id]["error"] = str(e)
-
-@app.route("/")
+@app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html')
 
-@app.route("/start", methods=["POST"])
-def start_scraper():
-    from_page = int(request.form.get("from_page", 1))
-    to_page = int(request.form.get("to_page", 10))
-    threads = int(request.form.get("threads", 5))
-    task_id = str(uuid.uuid4())
+@app.route('/start', methods=['POST'])
+def start_task():
+    start_page = int(request.form['start'])
+    end_page = int(request.form['end'])
+    thread_num = int(request.form['threads'])
 
-    task_pool[task_id] = {
-        "status": "pending",
-        "progress": {"done": 0, "total": to_page - from_page + 1},
-        "filename": None,
-        "error": None
-    }
+    def run_scraper():
+        filename = scrape_codeforces_concurrent(
+            start_page=start_page,
+            end_page=end_page,
+            max_threads=thread_num,
+            progress_callback=update_progress_callback
+        )
+        with progress_lock:
+            progress["filename"] = filename
 
-    threading.Thread(
-        target=background_scrape,
-        args=(task_id, from_page, to_page, threads)
-    ).start()
+    threading.Thread(target=run_scraper).start()
 
-    return jsonify({"task_id": task_id})
+    return jsonify({
+        "message": "任务已启动",
+        "filename": None
+    })
 
-@app.route("/task_status")
-def task_status():
-    task_id = request.args.get("task_id")
-    task = task_pool.get(task_id)
-    if not task:
-        return jsonify({"error": "任务不存在"}), 404
-    return jsonify(task)
+@app.route('/progress')
+def get_progress():
+    with progress_lock:
+        return jsonify(progress)
 
-@app.route("/read_csv")
-def read_csv():
-    filename = request.args.get("filename")
-    if not filename or not os.path.exists(filename):
-        return jsonify({"error": "CSV 文件不存在"}), 400
-    df = pd.read_csv(filename)
-    return df.to_json(orient="records", force_ascii=False)
+@app.route('/data/<path:filename>')
+def download_file(filename):
+    directory = os.path.abspath('experiment_result_data')
+    return send_from_directory(directory, filename)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route('/timing/<path:filename>')
+def get_timing(filename):
+    json_path = os.path.join('experiment_result_data', filename.replace('.csv', '') + '_timing.json')
+    if not os.path.exists(json_path):
+        return jsonify({"error": "timing file not found"}), 404
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+    return jsonify(data)
