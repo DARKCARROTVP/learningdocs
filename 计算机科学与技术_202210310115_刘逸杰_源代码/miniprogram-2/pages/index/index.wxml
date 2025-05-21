@@ -1,0 +1,22 @@
+<view class="container">
+  <view class="card">
+    <text class="title">学习助手</text>
+    <view class="button-container">
+      <button bindtap="navigateToTimetable">课程表</button>
+      <button bindtap="navigateToTasks">待办事项</button>
+      <button bindtap="navigateToExam">考试信息</button>
+      <button bindtap="navigateToChatGPT">ChatGPT对话框</button>
+      <button bindtap="navigateToScan">签到</button>
+    </view>
+  </view>
+
+  <!-- Display Unfinished Homework Tasks -->
+  <view class="homework-list">
+    <text class="homework-title">待办事项：{{unfinishedTasksCount}} 个</text>
+    <block wx:for="{{homeworkTasks}}" wx:key="index">
+      <view class="homework-item">
+        <text>{{item}}</text>
+      </view>
+    </block>
+  </view>
+</view>

@@ -1,0 +1,17 @@
+<!-- pages/tasks/tasks.wxml -->
+<view class="container">
+  <view class="input-container">
+    <input class="input" placeholder="请输入待办事项" bindinput="onHomeworkInput" value="{{newHomework}}" />
+    <button class="add-button" bindtap="addHomework">添加事项</button>
+  </view>
+
+  <view class="homework-list">
+    <!-- 遍历 homeworkTasks 数组 -->
+    <block wx:for="{{homeworkTasks}}" wx:key="index">
+      <view class="homework-item">
+        <text>{{item}}</text>
+        <button class="delete-button" data-index="{{index}}" bindtap="deleteHomework">[删除]</button>
+      </view>
+    </block>
+  </view>
+</view>

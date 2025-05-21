@@ -1,0 +1,20 @@
+/* pages/signin/success.wxss */
+.container {
+  padding: 30px;
+  text-align: center;
+}
+
+.success-message {
+  font-size: 24px;
+  color: green;
+}
+
+.back-button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #007aff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+}

@@ -1,0 +1,11 @@
+<!-- pages/signin/signin.wxml -->
+<view class="container">
+  <!-- 显示二维码 -->
+  <image src="images/scan.png" alt="扫码图片" class="qr-code-image"></image>
+  
+  <!-- 扫码签到按钮 -->
+  <button bindtap="scanQRCode" class="scan-btn">扫码签到</button>
+
+    <button bindtap="navigateToSuccess">跳过扫码，直接签到</button>
+
+</view>

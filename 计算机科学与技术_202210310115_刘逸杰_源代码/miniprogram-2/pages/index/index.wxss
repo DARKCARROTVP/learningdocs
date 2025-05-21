@@ -1,0 +1,31 @@
+/* pages/index/index.wxss */
+.container {
+  padding: 20px;
+}
+
+.card {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.button-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+button {
+  height: 50px;
+  background-color: #007aff;
+  color: white;
+  font-size: 18px;
+  border-radius: 25px;
+}

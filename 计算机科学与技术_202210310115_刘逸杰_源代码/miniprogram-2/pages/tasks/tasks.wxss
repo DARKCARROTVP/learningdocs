@@ -1,0 +1,59 @@
+/* pages/tasks/tasks.wxss */
+.container {
+  padding: 30px;
+}
+
+.input-container {
+  display: flex;
+  align-items: center;  /* 垂直居中对齐 */
+  margin-bottom: 20px;
+  width: 100%; /* 确保容器宽度填满父元素 */
+  justify-content: space-between; /* 或者使用 'flex-end' 来使按钮靠右 */
+}
+
+.input {
+  flex: 100%;  /* 使输入框占据剩余的可用空间 */
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 16px;  /* 增加字体大小让文本更清晰 */
+}
+
+.add-button {
+  margin-left: 10px;
+  padding: 8px 10px;  /* 减少内边距，缩小按钮的大小 */
+  background-color: #007aff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;  /* 可选，调整字体大小 */
+  width: auto;  /* 根据内容自动调整宽度 */
+}
+
+.homework-list {
+  margin-top: 20px;
+}
+
+.homework-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+  width: 100%;  /* 让元素的宽度填满父元素 */
+  max-width: 400px;  /* 可选，设置最大宽度，避免过宽 */
+}
+
+.delete-button {
+  right: 10px;      /* 设置按钮距离屏幕右边的距离 */
+  bottom: 10px;     /* 设置按钮距离底部的距离，可以根据需要调整 */
+  padding: 10px 12px;
+  background-color: whitesmoke;
+  color: red;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  width: auto;  /* 根据内容自动调整宽度 */
+}

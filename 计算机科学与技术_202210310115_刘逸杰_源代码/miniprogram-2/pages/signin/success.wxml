@@ -1,0 +1,5 @@
+<!-- pages/signin/success.wxml -->
+<view class="container">
+  <text class="success-message">签到成功！</text>
+  <button bindtap="goBack" class="back-button">返回首页</button>
+</view>

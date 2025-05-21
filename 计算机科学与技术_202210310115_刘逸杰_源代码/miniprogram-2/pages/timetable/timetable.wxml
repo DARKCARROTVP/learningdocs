@@ -1,0 +1,22 @@
+<view class="container">
+  <view class="week-buttons">
+    <button bindtap="showCourses" data-day="星期一">星期一</button>
+    <button bindtap="showCourses" data-day="星期二">星期二</button>
+    <button bindtap="showCourses" data-day="星期三">星期三</button>
+    <button bindtap="showCourses" data-day="星期四">星期四</button>
+    <button bindtap="showCourses" data-day="星期五">星期五</button>
+    <button bindtap="showCourses" data-day="星期六">星期六</button>
+    <button bindtap="showCourses" data-day="星期天">星期天</button>
+  </view>
+
+  <!-- 显示课程信息 -->
+  <view class="courses-list" wx:if="{{selectedDay}}">
+    <view class="day-title">{{selectedDay}}的课程</view>
+    <block wx:for="{{courses}}" wx:key="index">
+      <view class="course-item">
+        <text>{{item.time}}</text>
+        <text>{{item.course}}</text>
+      </view>
+    </block>
+  </view>
+</view>

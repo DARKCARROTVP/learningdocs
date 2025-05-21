@@ -1,0 +1,36 @@
+/* pages/signin/signin.wxss */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;  /* 设置容器的高度为屏幕的100% */
+  background-color: #f8f8f8;  /* 背景颜色为浅灰色 */
+  padding: 20px;
+}
+
+.qr-code-image {
+  width: 250px;  /* 设置二维码图像的宽度 */
+  height: 250px; /* 设置二维码图像的高度 */
+  border-radius: 10px; /* 增加圆角效果 */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 增加阴影效果 */
+  margin-bottom: 30px; /* 图像与按钮之间的距离 */
+}
+
+.scan-btn {
+  padding: 12px 20px;
+  background-color: #007aff;  /* 蓝色背景 */
+  color: white;
+  font-size: 14px;
+  font-weight: bold;  /* 字体加粗 */
+  border-radius: 25px;  /* 按钮圆角 */
+  width: 60%;  /* 按钮宽度占屏幕的60% */
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 122, 255, 0.3);  /* 添加按钮的阴影 */
+  transition: all 0.3s ease;  /* 添加过渡效果 */
+}
+
+.scan-btn:active {
+  background-color: #005bbb;  /* 按钮按下时的颜色 */
+  box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2); /* 按钮按下时阴影效果 */
+}

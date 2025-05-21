@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/timetable/timetable",
+    "pages/tasks/tasks",
+    "pages/chatgpt/chatgpt",
+    "pages/exam/exam",
+    "pages/signin/signin",
+    "pages/signin/success"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "学习助手",
+    "backgroundColor": "#eeeeee",
+    "backgroundTextStyle": "light"
+  },
+  "cloud": true
+}

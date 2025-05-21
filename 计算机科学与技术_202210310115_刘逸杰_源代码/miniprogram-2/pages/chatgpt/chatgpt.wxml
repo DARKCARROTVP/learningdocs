@@ -1,0 +1,16 @@
+<view class="container">
+  <view class="title">
+    ChatGPT 3.5
+  </view>
+  <scroll-view class="message-list" scroll-y="true" scroll-into-view="{{scrollIntoView}}">
+    <view class="message-item" wx:for="{{ messages }}" wx:key="index">
+      <view class="message-content {{item.type}}">
+        <view class="message-text">{{ item.content }}</view>
+      </view>
+    </view>
+  </scroll-view>
+  <view class="input-container">
+    <input class="input" placeholder="请输入消息" bindinput="handleInput" value="{{ inputMessage }}" bindconfirm="sendMessage" />
+    <button class="send-button" bindtap="sendMessage">发送</button>
+  </view>
+</view>

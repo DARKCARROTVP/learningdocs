@@ -1,0 +1,57 @@
+.container {
+  padding: 20px;
+  background-color: #f4f4f4;
+}
+
+.week-buttons {
+  display: flex;
+  flex-direction: row; /* 让按钮垂直排列 */
+  justify-content: space-around; /* 在垂直方向上均匀分布按钮 */
+  align-items: center; /* 水平居中按钮 */
+  width: 300px; /* 设置容器的宽度 */
+  height: 100px; /* 设置容器的高度，确保它是长方形 */
+  margin-bottom: 20px;
+  background-color: #f0f0f0; /* 可以设置背景色，增加可见度 */
+  border-radius: 10px; /* 可选，圆角效果 */
+  padding: 20px;
+  
+}
+
+button {
+  width: 12%;
+  height: 100%;
+  padding: 15px;
+  background-color: #007aff;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+  padding-right: 25px;  /* 增加左侧内边距，使文字距离左边缘更远 */
+}
+
+button:hover {
+  background-color: #005bb5;
+}
+
+.courses-list {
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.day-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.course-item {
+  margin: 20px 0;
+}
+
+.course-item text {
+  display: block;
+  font-size: 25px;
+}
